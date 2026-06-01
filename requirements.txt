@@ -1,0 +1,14 @@
+# Graydient → Pip Requirements tab
+# Paste these into the slot, one per line, no version pins.
+#
+# From kijai/ComfyUI-WanVideoWrapper
+sageattention
+diffusers
+accelerate
+transformers
+safetensors
+#
+# From Kosinkadink/ComfyUI-VideoHelperSuite (VHS_VideoCombine mp4 output)
+av
+imageio
+imageio-ffmpeg
