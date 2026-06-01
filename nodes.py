@@ -168,42 +168,44 @@ def generate_cameractrl_poses(keyframes, total_frames, fx=1.0, fy=1.0, cx=0.5, c
 class LensForgeCameraNode:
     CATEGORY     = 'LensForge'
     FUNCTION     = 'execute'
-    RETURN_TYPES  = ('CAMERACTRL_POSES', 'STRING')
-    RETURN_NAMES  = ('camera_poses',     'negative_text')
+    RETURN_TYPES  = ('CAMERACTRL_POSES', 'STRING', 'INT', 'INT', 'INT', 'INT')
+    RETURN_NAMES  = ('camera_poses', 'positive_text', 'num_frames', 'fps', 'width', 'height')
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             'required': {
-                'negative_prompt': ('STRING', {'multiline': True,  'default': ''}),
-                'num_frames':      ('INT',    {'default': 81,  'min': 9,  'max': 257}),
-                'width':           ('INT',    {'default': 848, 'min': 64, 'max': 2048}),
-                'height':          ('INT',    {'default': 480, 'min': 64, 'max': 2048}),
+                'positive_prompt': ('STRING', {'multiline': True, 'default': ''}),
+                'num_frames':      ('INT',    {'default': 25,  'min': 9,   'max': 257}),
+                'fps':             ('INT',    {'default': 16,  'min': 8,   'max': 30}),
+                'width':           ('INT',    {'default': 848, 'min': 64,  'max': 2048}),
+                'height':          ('INT',    {'default': 480, 'min': 64,  'max': 2048}),
             }
         }
 
-    def execute(self, negative_prompt, num_frames, width, height):
-        cleaned, raw_code = strip_lf_token(negative_prompt)
+    def execute(self, positive_prompt, num_frames, fps, width, height):
+        cleaned, raw_code = strip_lf_token(positive_prompt)
 
         if raw_code:
             try:
                 scene        = decode(raw_code)
                 keyframes    = scene['keyframes']
-                total_frames = scene.get('frames', num_frames)
+                total_frames = scene.get('frames',     num_frames)
+                out_fps      = scene.get('fps',        fps)
+                res          = scene.get('resolution', f'{width}x{height}')
+                w, h         = (int(x) for x in res.split('x'))
             except Exception as e:
-                print(f'[LensForgeCameraNode] decode error: {e} — falling back to static')
-                keyframes    = []
-                total_frames = num_frames
+                print(f'[LensForgeCameraNode] decode error: {e} — using defaults')
+                keyframes = []; total_frames = num_frames; out_fps = fps; w = width; h = height
         else:
-            print('[LensForgeCameraNode] no LF1 token found — static camera')
-            keyframes    = []
-            total_frames = num_frames
+            print('[LensForgeCameraNode] no LF1 token — static camera, using defaults')
+            keyframes = []; total_frames = num_frames; out_fps = fps; w = width; h = height
 
         if not keyframes:
             keyframes = [{'start': 0, 'end': total_frames, 'motion': 'static', 'speed': 0.0}]
 
         poses = generate_cameractrl_poses(keyframes, total_frames)
-        return (poses, cleaned)
+        return (poses, cleaned, total_frames, out_fps, w, h)
 
 
 # ── Registration ──────────────────────────────────────────────────────────────
