@@ -54,13 +54,26 @@ def decode(code):
         code = code[4:]
     if len(code) < 4:
         raise ValueError(f'LensForge code too short: {repr(code)}')
+
     frames  = _dec(code[0:2])
     fps_idx = _dec(code[2])
-    res_idx = _dec(code[3])
-    fps        = FPS_OPTIONS[fps_idx]  if fps_idx < len(FPS_OPTIONS)  else 16
-    resolution = RESOLUTIONS[res_idx]  if res_idx < len(RESOLUTIONS)  else '848x480'
+    fps     = FPS_OPTIONS[fps_idx] if fps_idx < len(FPS_OPTIONS) else 16
+
+    # Resolution: 'f' prefix = custom (width 3 chars + height 3 chars), else preset index
+    if code[3].lower() == 'f':
+        if len(code) < 10:
+            raise ValueError(f'LensForge code too short for custom resolution: {repr(code)}')
+        width      = _dec(code[4:7])
+        height     = _dec(code[7:10])
+        resolution = f'{width}x{height}'
+        kf_start   = 10
+    else:
+        res_idx    = _dec(code[3])
+        resolution = RESOLUTIONS[res_idx] if res_idx < len(RESOLUTIONS) else '848x480'
+        kf_start   = 4
+
     keyframes = []
-    pos = 4
+    pos = kf_start
     while pos + 6 <= len(code):
         start  = _dec(code[pos:pos+2])
         end    = _dec(code[pos+2:pos+4])
@@ -70,6 +83,7 @@ def decode(code):
         speed  = s_enc / 35.0
         keyframes.append({'start': start, 'end': end, 'motion': motion, 'speed': speed})
         pos += 6
+
     return {'frames': frames, 'fps': fps, 'resolution': resolution, 'keyframes': keyframes}
 
 def strip_lf_token(text):
